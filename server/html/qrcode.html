@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>BILI</title>
+    <script src="qrcode.min.js"></script>
+</head>
+<body>
+    <div id="qrcode-img"></div>
+    <script>
+        QRCode("qrcode-img", {
+            text: "https://passport.bilibili.com/qrcode/h5/login?oauthKey=43f6939d5b2d3f635e421872a1c7713d",
+            width: 140,
+            height: 140
+        })
+    </script>
+</body>
+</html>
