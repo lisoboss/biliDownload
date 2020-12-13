@@ -1,6 +1,7 @@
-package main
+package client
 
 import (
+	"bili/tools"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -9,12 +10,12 @@ import (
 )
 
 var (
-	Conf *ConfData
+	Conf       *tools.ConfData
 	httpClient *http.Client
 )
 
 func init() {
-	Conf = NewConf()
+	Conf = tools.NewConf()
 	httpClient = &http.Client{}
 
 	httpClient.Jar, _ = cookiejar.New(nil)

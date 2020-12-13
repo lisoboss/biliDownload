@@ -1,4 +1,4 @@
-package main
+package tools
 
 import (
 	"encoding/json"
@@ -423,7 +423,7 @@ func (h *FileHandler) close() {
 	if h.logfile != nil {
 		h.mu.Lock()
 		defer h.mu.Unlock()
-		h.logfile.Close()
+		_ = h.logfile.Close()
 	}
 }
 
@@ -431,7 +431,7 @@ func (h *RotatingHandler) close() {
 	if h.logfile != nil {
 		h.mu.Lock()
 		defer h.mu.Unlock()
-		h.logfile.Close()
+		_ = h.logfile.Close()
 	}
 }
 
@@ -487,7 +487,7 @@ func (h *RotatingHandler) rename() {
 	defer h.mu.Unlock()
 
 	if h.logfile != nil {
-		h.logfile.Close()
+		_ = h.logfile.Close()
 	}
 
 	h.logfile, _ = os.OpenFile(newPath, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)

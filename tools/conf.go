@@ -1,4 +1,4 @@
-package main
+package tools
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	rootPath = "./conf_data.json"
+	rootPath    = "./conf_data.json"
 	newConfData *ConfData
 )
 

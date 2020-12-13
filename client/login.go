@@ -1,6 +1,7 @@
-package main
+package client
 
 import (
+	"bili/tools"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -32,15 +33,15 @@ func CheckLoginInfo() {
 	if err != nil {
 		panic(err)
 	}
-	Log.Infof("loginInfo: %v", li)
+	tools.Log.Infof("loginInfo: %v", li)
 
-	<- loginInfoSleep
+	<-loginInfoSleep
 
 	li, err = getLoginInfo()
 	if err != nil {
 		panic(err)
 	}
-	Log.Infof("loginInfo: %v", li)
+	tools.Log.Infof("loginInfo: %v", li)
 
 	//Log.Infof("Conf: %v", *Conf)
 	Conf.Save()
