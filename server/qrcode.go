@@ -5,8 +5,11 @@ import (
 	"context"
 	"html/template"
 	"net/http"
+	"os/exec"
 	"time"
 )
+
+var Address = "http://localhost"
 
 func NewServer(key string) {
 	stopTime := time.Tick(time.Second * 30)
@@ -27,7 +30,7 @@ func NewServer(key string) {
 	go func() {
 		err := server.ListenAndServe()
 		if err != nil {
-			tools.Log.Fatal(err)
+			tools.Log.Warn(err)
 		}
 	}()
 
@@ -38,4 +41,9 @@ func NewServer(key string) {
 			tools.Log.Fatal(err)
 		}
 	}()
+}
+
+func AlertAddress() {
+	command := exec.Command("cmd", "/c", "start", Address)
+	_ = command.Run()
 }

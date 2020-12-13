@@ -27,20 +27,34 @@ func init() {
 	}
 }
 
+func formatBody(resp *http.Response) (body []byte, err error) {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		//log.Printf("wrong status code: %d", resp.StatusCode)
+		return nil, fmt.Errorf("ERROR status code: %d", resp.StatusCode)
+	}
+	if rc := resp.Cookies(); len(rc) > 0 {
+		Conf.SetCookie(resp.Request.URL, rc)
+	}
+	body, _ = ioutil.ReadAll(resp.Body)
+	return
+}
+
 func httpClientPostForm(urlStr string, data url.Values) (body []byte, err error) {
 	resp, err := httpClient.PostForm(urlStr, data)
 	if err != nil {
 		//log.Printf("ERROR: %v", err)
 		return nil, fmt.Errorf("ERROR postform: %v", err)
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		//log.Printf("wrong status code: %d", resp.StatusCode)
-		return nil, fmt.Errorf("ERROR status code: %d", resp.StatusCode)
+	return formatBody(resp)
+}
+
+func httpClientGet(urlStr string) (body []byte, err error) {
+	//tools.Log.Debug(urlStr)
+	resp, err := httpClient.Get(urlStr)
+	if err != nil {
+		//log.Printf("ERROR: %v", err)
+		return nil, fmt.Errorf("ERROR postform: %v", err)
 	}
-	if len(resp.Cookies()) > 0 {
-		Conf.SetCookie(resp.Request.URL, httpClient.Jar.Cookies(resp.Request.URL))
-	}
-	body, _ = ioutil.ReadAll(resp.Body)
-	return
+	return formatBody(resp)
 }

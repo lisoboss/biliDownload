@@ -29,7 +29,7 @@ type J struct {
 }
 
 type ConfData struct {
-	Cookies map[string][]http.Cookie `json:"cookies"`
+	Cookies map[string]map[string]http.Cookie `json:"cookies"`
 	Js      []J
 }
 
@@ -37,7 +37,7 @@ func init() {
 	newConfData = &ConfData{}
 	newConfData.Flush()
 	if newConfData.Cookies == nil {
-		newConfData.Cookies = make(map[string][]http.Cookie)
+		newConfData.Cookies = make(map[string]map[string]http.Cookie)
 	}
 	//log.Printf("init newConfData: %v", newConfData)
 }
@@ -48,19 +48,26 @@ func NewConf() *ConfData {
 }
 
 func (c *ConfData) Cookie(key string) (cookies []*http.Cookie) {
-	for _, cookie := range c.Cookies[key] {
+	for key1, _ := range c.Cookies[key] {
+		cookie := c.Cookies[key][key1]
 		cookies = append(cookies, &cookie)
 	}
 	return
 }
 
-func (c *ConfData) SetCookie(u *url.URL, cookies []*http.Cookie) {
-	key := u.Host
+func (c *ConfData) SetCookie(url *url.URL, cookies []*http.Cookie) {
 	if c.Cookies == nil {
-		c.Cookies = make(map[string][]http.Cookie)
+		c.Cookies = make(map[string]map[string]http.Cookie)
 	}
 	for _, cookie := range cookies {
-		c.Cookies[key] = append(c.Cookies[key], *cookie)
+		key := cookie.Domain
+		if key == "" {
+			key = url.Host
+		}
+		if c.Cookies[key] == nil {
+			c.Cookies[key] = make(map[string]http.Cookie)
+		}
+		c.Cookies[key][cookie.Name] = *cookie
 	}
 }
 
