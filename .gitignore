@@ -17,3 +17,5 @@
 # Idea
 /.idea
 /log
+/conf_data.json
+/logs.config
