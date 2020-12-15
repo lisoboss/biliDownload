@@ -17,7 +17,7 @@ import (
 var Log *_Logger
 
 const (
-	logConfigPath = "./logs.config"
+	logConfigPath = "./logs.config.json"
 	logConfigStr  = `{
 	"logs" : [{
 	"name":"default", 
@@ -271,7 +271,7 @@ func newHandler(lg logConfig) (Handler, error) {
 }
 
 func NewLogger(name string) error {
-	filename := "./logs.config.json"
+	filename := logConfigPath
 	bytes, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return err

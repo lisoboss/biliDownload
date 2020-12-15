@@ -51,7 +51,6 @@ func getFavListInfo() (favList []Fav, err error) {
 		tools.Log.Fatalf("up mid:%f <= 0", mid)
 	}
 	urlStr := fmt.Sprintf("https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid=%.0f", mid)
-	tools.Log.Debug(urlStr)
 	body, err := httpClientGet(urlStr)
 	if err != nil {
 		return

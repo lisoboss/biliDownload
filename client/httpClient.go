@@ -42,6 +42,7 @@ func formatBody(resp *http.Response) (body []byte, err error) {
 }
 
 func httpClientPostForm(urlStr string, data url.Values) (body []byte, err error) {
+	tools.Log.Debug("post form", urlStr)
 	resp, err := httpClient.PostForm(urlStr, data)
 	if err != nil {
 		//log.Printf("ERROR: %v", err)
@@ -51,7 +52,7 @@ func httpClientPostForm(urlStr string, data url.Values) (body []byte, err error)
 }
 
 func httpClientGet(urlStr string) (body []byte, err error) {
-	tools.Log.Debug(urlStr)
+	tools.Log.Debug("get", urlStr)
 	resp, err := httpClient.Get(urlStr)
 	if err != nil {
 		//log.Printf("ERROR: %v", err)
