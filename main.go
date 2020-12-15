@@ -18,6 +18,8 @@ func main() {
 		tools.Log.Fatal(err)
 	}
 
+	client.Start()
+
 	//ab := map[string][]int{"kk":{1,4},"ee":{1,6}}
 	//log.Println(ab["kk"])
 	//log.Println(ab["ww"])

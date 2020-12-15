@@ -271,7 +271,7 @@ func newHandler(lg logConfig) (Handler, error) {
 }
 
 func NewLogger(name string) error {
-	filename := "./logs.config"
+	filename := "./logs.config.json"
 	bytes, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return err

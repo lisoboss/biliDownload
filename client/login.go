@@ -115,6 +115,11 @@ func CheckLogin() bool {
 	}
 	if ni.Code == 0 {
 		tools.Log.Infof("isLogin:%v, name:%s", true, ni.Data["uname"])
+		if mid := ni.Data["mid"].(float64); Conf.UpMid != mid {
+			Conf.UpMid = mid
+			Conf.Save()
+			tools.Log.Debug(mid)
+		}
 		return true
 	}
 	tools.Log.Warn(ni)

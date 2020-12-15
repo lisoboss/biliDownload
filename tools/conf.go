@@ -30,6 +30,7 @@ type J struct {
 
 type ConfData struct {
 	Cookies map[string]map[string]http.Cookie `json:"cookies"`
+	UpMid   float64                           `json:"up_mid"`
 	Js      []J
 }
 

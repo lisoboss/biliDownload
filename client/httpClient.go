@@ -21,7 +21,8 @@ func init() {
 	httpClient.Jar, _ = cookiejar.New(nil)
 
 	if len(Conf.Cookies) > 0 {
-		for key, _ := range Conf.Cookies {
+		for key := range Conf.Cookies {
+			tools.Log.Debug(key)
 			httpClient.Jar.SetCookies(&url.URL{Host: key, Scheme: "https"}, Conf.Cookie(key))
 		}
 	}
@@ -50,7 +51,7 @@ func httpClientPostForm(urlStr string, data url.Values) (body []byte, err error)
 }
 
 func httpClientGet(urlStr string) (body []byte, err error) {
-	//tools.Log.Debug(urlStr)
+	tools.Log.Debug(urlStr)
 	resp, err := httpClient.Get(urlStr)
 	if err != nil {
 		//log.Printf("ERROR: %v", err)
