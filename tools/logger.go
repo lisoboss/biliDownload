@@ -17,34 +17,42 @@ import (
 var Log *_Logger
 
 const (
-	logConfigPath = "./logs.config.json"
-	logConfigStr  = `{
+	logConfigFilePath = "./data/logs.config.json"
+	logConfigStr      = `{
 	"logs" : [{
 	"name":"default", 
 	"data":[
-		{"handle":"console", "level":0},
+		{"handle":"console", "level":1},
 		{"handle":"rotating", "dir":"./log", "filename":"default", "level":0, "maxnum":0, "maxsize":"1MB"}
 		]
 	}]
 }`
 )
 
-func createLogConfigFile() {
-	err := ioutil.WriteFile(logConfigPath, []byte(logConfigStr), 0777)
-	if err != nil {
-		panic(err)
-	}
+func initLogConfigFile() error {
+	err := ioutil.WriteFile(logConfigFilePath, []byte(logConfigStr), os.ModePerm)
+	return err
 }
 
 func init() {
-	s, err := os.Stat(logConfigPath)
+	s, err := os.Stat(logConfigFilePath)
 
 	if err != nil {
-		createLogConfigFile()
+		err := CreateDirFromFilePath(logConfigFilePath)
+		if err != nil {
+			panic(err)
+		}
+		err = initLogConfigFile()
+		if err != nil {
+			panic(err)
+		}
 	} else {
 		dir := s.IsDir()
 		if dir == true {
-			createLogConfigFile()
+			err = initLogConfigFile()
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 
@@ -271,7 +279,7 @@ func newHandler(lg logConfig) (Handler, error) {
 }
 
 func NewLogger(name string) error {
-	filename := logConfigPath
+	filename := logConfigFilePath
 	bytes, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return err

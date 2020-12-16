@@ -1,15 +1,17 @@
-package tools
+package db
 
 import (
+	"bili/tools"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 )
 
 var (
-	rootPath    = "./conf_data.json"
-	newConfData *ConfData
+	confDbFilePath = "./data/conf.db.json"
+	newConfDb      *ConfDb
 )
 
 type P struct {
@@ -28,27 +30,37 @@ type J struct {
 	Fs    []F
 }
 
-type ConfData struct {
+type ConfDb struct {
 	Cookies map[string]map[string]http.Cookie `json:"cookies"`
 	UpMid   float64                           `json:"up_mid"`
-	Js      []J
 }
 
 func init() {
-	newConfData = &ConfData{}
-	newConfData.Flush()
-	if newConfData.Cookies == nil {
-		newConfData.Cookies = make(map[string]map[string]http.Cookie)
+	initDbFile()
+	newConfDb = &ConfDb{}
+	newConfDb.Flush()
+	if newConfDb.Cookies == nil {
+		newConfDb.Cookies = make(map[string]map[string]http.Cookie)
 	}
-	//log.Printf("init newConfData: %v", newConfData)
+	//log.Printf("init newConfDb: %v", newConfDb)
 }
 
-func NewConf() *ConfData {
-	//log.Printf("newConfData: %v", newConfData)
-	return newConfData
+func initDbFile() {
+	_, err := os.Stat(confDbFilePath)
+	if err != nil {
+		err := tools.CreateDirFromFilePath(confDbFilePath)
+		if err != nil {
+			tools.Log.Fatal(err)
+		}
+	}
 }
 
-func (c *ConfData) Cookie(key string) (cookies []*http.Cookie) {
+func NewConf() *ConfDb {
+	//log.Printf("newConfDb: %v", newConfDb)
+	return newConfDb
+}
+
+func (c *ConfDb) Cookie(key string) (cookies []*http.Cookie) {
 	for key1, _ := range c.Cookies[key] {
 		cookie := c.Cookies[key][key1]
 		cookies = append(cookies, &cookie)
@@ -56,7 +68,7 @@ func (c *ConfData) Cookie(key string) (cookies []*http.Cookie) {
 	return
 }
 
-func (c *ConfData) SetCookie(url *url.URL, cookies []*http.Cookie) {
+func (c *ConfDb) SetCookie(url *url.URL, cookies []*http.Cookie) {
 	if c.Cookies == nil {
 		c.Cookies = make(map[string]map[string]http.Cookie)
 	}
@@ -72,21 +84,21 @@ func (c *ConfData) SetCookie(url *url.URL, cookies []*http.Cookie) {
 	}
 }
 
-func (c *ConfData) Save() {
+func (c *ConfDb) Save() {
 	// 保存conf
 	bytes, err := json.Marshal(c)
 	if err != nil {
 		panic(err)
 	}
-	err = ioutil.WriteFile(rootPath, bytes, 0777)
+	err = ioutil.WriteFile(confDbFilePath, bytes, 0777)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (c *ConfData) Read() {
+func (c *ConfDb) Read() {
 	// 读取conf
-	bytes, err := ioutil.ReadFile(rootPath)
+	bytes, err := ioutil.ReadFile(confDbFilePath)
 	if err != nil {
 		c.Save()
 		return
@@ -96,7 +108,7 @@ func (c *ConfData) Read() {
 	//log.Println(*c)
 }
 
-func (c *ConfData) Flush() {
+func (c *ConfDb) Flush() {
 	// 刷新conf
 	c.Read()
 }
