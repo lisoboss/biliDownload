@@ -8,7 +8,13 @@ func CreateDir(dirPath string) error {
 }
 
 func CreateDirFromFilePath(filePath string) error {
-	err := CreateDir(filePath)
+	file, err := os.Create(filePath)
+	if err == nil {
+		_ = file.Close()
+		err = os.Remove(filePath)
+		return err
+	}
+	err = CreateDir(filePath)
 	if err != nil {
 		return err
 	}

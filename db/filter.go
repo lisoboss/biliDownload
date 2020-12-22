@@ -11,4 +11,6 @@ type Filter interface {
 
 	Init()
 	Save()
+
+	Exist(string, string) bool
 }

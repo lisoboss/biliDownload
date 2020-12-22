@@ -5,9 +5,20 @@ import (
 	"bili/tools"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"regexp"
 )
 
-var filter db.Filter
+var (
+	filter             db.Filter
+	fileDir            = "./data"
+	filterKey          = "FILEPATH"
+	compileSpecialChar = regexp.MustCompile(`[\\/:*?"<>|]`)
+	compileMediaInfo   = regexp.MustCompile(`"video":\[({"id".*?),"audio":\[({"id".*?),"support_formats"`)
+	compileMediaUrl    = regexp.MustCompile(`"id"[^"]+"baseUrl"[^"]+"([^"]+)"`)
+)
 
 func init() {
 	filter = db.NewLocalFilter()
@@ -110,14 +121,14 @@ func getFavListInfo() (favList []fav, err error) {
 	return
 }
 
-func getMediaInfo(mediaId float64, mediaCount int) (medias []media, err error) {
+func getMediaInfo(f fav) (medias []media, err error) {
 	pn := 1
 	count := 0
 	for {
-		if count >= mediaCount {
+		if count >= f.MediaCount {
 			break
 		}
-		urlStr := fmt.Sprintf("https://api.bilibili.com/x/v3/fav/resource/list?media_id=%.0f&pn=%d&ps=20", mediaId, pn)
+		urlStr := fmt.Sprintf("https://api.bilibili.com/x/v3/fav/resource/list?media_id=%.0f&pn=%d&ps=20", f.Id, pn)
 		body, err := httpClientGet(urlStr)
 		if err != nil {
 			return medias, err
@@ -138,8 +149,95 @@ func getMediaInfo(mediaId float64, mediaCount int) (medias []media, err error) {
 	return medias, err
 }
 
-func download() {
+func saveFile(path string, data []byte) bool {
 
+	if err := tools.CreateDirFromFilePath(path); err != nil {
+		tools.Log.Fatal(err)
+	}
+
+	if err := ioutil.WriteFile(path, data, os.ModePerm); err != nil {
+		tools.Log.Error(err)
+		return false
+	}
+
+	return true
+}
+
+func saveFileFromHttp(path string, urlStr string) bool {
+
+	if err := tools.CreateDirFromFilePath(path); err != nil {
+		tools.Log.Fatal(err)
+	}
+
+	fileOut, err := os.Create(path)
+	if err != nil {
+		tools.Log.Fatal(err)
+	}
+	defer func() {
+		_ = fileOut.Close()
+	}()
+
+	err = httpClientDownload(fileOut, urlStr)
+	if err != nil {
+		tools.Log.Fatal(err)
+	}
+
+	return true
+}
+
+func download(k string, m media) bool {
+
+	for p := 1; p < m.Page+1; p++ {
+		pathStr := filepath.Join(fileDir, k, compileSpecialChar.ReplaceAllString(m.Title, "_"), fmt.Sprintf("P%d", p))
+
+		if filter.Exist(filterKey, pathStr) {
+			tools.Log.Info("exist:", pathStr)
+			return true
+		}
+
+		urlStr := fmt.Sprintf("https://www.bilibili.com/video/%s?p=%d", m.BvId, p)
+		tools.Log.Info("download url:", urlStr)
+
+		body, err := httpClientGet(urlStr)
+		if err != nil {
+			tools.Log.Fatal(err)
+		}
+
+		result := compileMediaInfo.FindSubmatch(body)
+		//tools.Log.Debug(result)
+		if len(result) != 3 {
+			tools.Log.Warn("filter err regexp result != 1 && result[0] != 3")
+			return false
+		}
+
+		videoUrlStr := string(compileMediaUrl.FindSubmatch(result[1])[1])
+		audioUrlStr := string(compileMediaUrl.FindSubmatch(result[2])[1])
+
+		//tools.Log.Debug(videoUrlStr)
+		//tools.Log.Debug(audioUrlStr)
+
+		tools.Log.Info("download video...")
+		if ok := saveFileFromHttp(filepath.Join(pathStr, "video.mp4"), videoUrlStr); !ok {
+			tools.Log.Errorf("save video file %s err", videoUrlStr)
+		}
+		tools.Log.Info("download audio...")
+		if ok := saveFileFromHttp(filepath.Join(pathStr, "audio.mp3"), audioUrlStr); !ok {
+			tools.Log.Errorf("save audio file %s err", audioUrlStr)
+		}
+		tools.Log.Info("save info...")
+		if ok := saveFile(filepath.Join(pathStr, "info.txt"), []byte(m.Intro)); !ok {
+			tools.Log.Errorf("save info file err")
+		}
+
+		if !filter.Add(filterKey, pathStr) {
+			tools.Log.Error("filter add err pathStr:", pathStr)
+			return false
+		}
+
+		filter.Save()
+	}
+
+	return true
 }
 
 func Start() {
@@ -148,18 +246,33 @@ func Start() {
 	if err != nil {
 		tools.Log.Fatal(err)
 	}
-	n := len(favList)
-	tools.Log.Infof("favList:%d", n)
 
+	fn := len(favList)
+	tools.Log.Infof("favList:%d", fn)
 	for i, f := range favList {
-		tools.Log.Info(i, n, f.Title, f.MediaCount)
-		medias, err := getMediaInfo(f.Id, f.MediaCount)
+		tools.Log.Info(i, fn, f.Title, f.MediaCount)
+
+		if Conf.ExcludeFavorites[f.Title] {
+			tools.Log.Info("已排除:", f.Title)
+			continue
+		}
+
+		medias, err := getMediaInfo(f)
 		if err != nil {
 			tools.Log.Fatal(err)
 		}
 		//tools.Log.Debug(medias)
-		tools.Log.Infof("get medias:%d", len(medias))
+		mn := len(medias)
+		tools.Log.Infof("get medias:%d", mn)
 
+		for j, m := range medias {
+			tools.Log.Infof("download favList:%d/%d medias:%d/%d => bv:%s name:%s", i+1, fn, j+1, mn, m.BvId, m.Title)
+			if ok := download(f.Title, m); ok {
+				tools.Log.Infof("download favList:%d/%d medias:%d/%d successfully", i+1, fn, j+1, mn)
+			} else {
+				tools.Log.Errorf("download favList:%d/%d medias:%d/%d unsuccessfully", i+1, fn, j+1, mn)
+			}
+		}
 	}
 
 }

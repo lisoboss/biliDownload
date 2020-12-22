@@ -35,6 +35,10 @@ func (l *LocalFileFilter) Init() {
 	if err != nil {
 		tools.Log.Fatal(err)
 	}
+
+	if l.Values == nil {
+		l.Values = make(map[string]map[string]bool)
+	}
 }
 
 func (l *LocalFileFilter) Save() {
@@ -69,7 +73,7 @@ func (l *LocalFileFilter) Delete(key string, value string) bool {
 
 func (l *LocalFileFilter) Clear(key string) bool {
 	if l.Values[key] != nil {
-		l.Values[key] = nil
+		l.Values[key] = make(map[string]bool)
 	}
 	return true
 }
@@ -91,6 +95,13 @@ func (l *LocalFileFilter) Deletes(key string, values []string) []bool {
 }
 
 func (l *LocalFileFilter) ClearAll() bool {
-	l.Values = nil
+	l.Values = make(map[string]map[string]bool)
 	return true
+}
+
+func (l *LocalFileFilter) Exist(key string, value string) bool {
+	if l.Values[key] == nil {
+		return false
+	}
+	return l.Values[key][value]
 }

@@ -14,25 +14,10 @@ var (
 	newConfDb      *ConfDb
 )
 
-type P struct {
-	Title        string `json:"title"`
-	SavePath     string `json:"save_path"`
-	DownloadPath string `json:"download_path"`
-}
-
-type F struct {
-	Title string `json:"title"`
-	Ps    []P
-}
-
-type J struct {
-	Title string `json:"title"`
-	Fs    []F
-}
-
 type ConfDb struct {
-	Cookies map[string]map[string]http.Cookie `json:"cookies"`
-	UpMid   float64                           `json:"up_mid"`
+	Cookies          map[string]map[string]http.Cookie `json:"cookies"`
+	UpMid            float64                           `json:"up_mid"`
+	ExcludeFavorites map[string]bool                   `json:"exclude_favorites"`
 }
 
 func init() {
@@ -41,6 +26,10 @@ func init() {
 	newConfDb.Flush()
 	if newConfDb.Cookies == nil {
 		newConfDb.Cookies = make(map[string]map[string]http.Cookie)
+	}
+	if len(newConfDb.ExcludeFavorites) <= 0 {
+		newConfDb.ExcludeFavorites = map[string]bool{"不下载视频的收藏夹名称1": true, "默认收藏夹": true}
+		newConfDb.Save()
 	}
 	//log.Printf("init newConfDb: %v", newConfDb)
 }
