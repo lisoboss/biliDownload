@@ -3,6 +3,7 @@ package main
 import (
 	"bili/client"
 	"bili/tools"
+	"time"
 )
 
 func main() {
@@ -15,5 +16,11 @@ func main() {
 		tools.Log.Fatal(err)
 	}
 
-	client.Start()
+	startSleep := time.Tick(time.Minute * 3)
+
+	for {
+		client.Start()
+		<-startSleep
+	}
+
 }

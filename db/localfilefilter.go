@@ -25,11 +25,14 @@ func NewLocalFilter() *LocalFileFilter {
 }
 
 func (l *LocalFileFilter) Init() {
+	_, err := os.Stat(filterDbFilePath)
+	if err != nil {
+		local.Save()
+	}
 
 	bytes, err := ioutil.ReadFile(filterDbFilePath)
 	if err != nil {
-		local.Save()
-		bytes = []byte{}
+		tools.Log.Fatal(err)
 	}
 	err = json.Unmarshal(bytes, l)
 	if err != nil {

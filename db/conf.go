@@ -37,7 +37,7 @@ func init() {
 func initDbFile() {
 	_, err := os.Stat(confDbFilePath)
 	if err != nil {
-		err := tools.CreateDirFromFilePath(confDbFilePath)
+		err = tools.CreateDirFromFilePath(confDbFilePath)
 		if err != nil {
 			tools.Log.Fatal(err)
 		}

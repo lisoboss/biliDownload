@@ -1,23 +1,21 @@
 package tools
 
-import "os"
+import (
+	"os"
+	"path/filepath"
+)
 
 func CreateDir(dirPath string) error {
-	err := os.MkdirAll(dirPath, os.ModePerm)
-	return err
+	return os.MkdirAll(dirPath, os.ModePerm)
 }
 
 func CreateDirFromFilePath(filePath string) error {
-	file, err := os.Create(filePath)
-	if err == nil {
-		_ = file.Close()
-		err = os.Remove(filePath)
-		return err
-	}
-	err = CreateDir(filePath)
+	filePath = filepath.Dir(filePath)
+	_, err := os.Stat(filePath)
 	if err != nil {
-		return err
+		if os.IsNotExist(err) {
+			return CreateDir(filePath)
+		}
 	}
-	err = os.Remove(filePath)
 	return err
 }

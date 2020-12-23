@@ -149,10 +149,12 @@ func getMediaInfo(f fav) (medias []media, err error) {
 	return medias, err
 }
 
-func saveFile(path string, data []byte) bool {
+func saveFile(path string, data []byte, createDirBool bool) bool {
 
-	if err := tools.CreateDirFromFilePath(path); err != nil {
-		tools.Log.Fatal(err)
+	if createDirBool {
+		if err := tools.CreateDirFromFilePath(path); err != nil {
+			tools.Log.Fatal(err)
+		}
 	}
 
 	if err := ioutil.WriteFile(path, data, os.ModePerm); err != nil {
@@ -163,10 +165,11 @@ func saveFile(path string, data []byte) bool {
 	return true
 }
 
-func saveFileFromHttp(path string, urlStr string) bool {
-
-	if err := tools.CreateDirFromFilePath(path); err != nil {
-		tools.Log.Fatal(err)
+func saveFileFromHttp(path string, urlStr string, createDirBool bool) bool {
+	if createDirBool {
+		if err := tools.CreateDirFromFilePath(path); err != nil {
+			tools.Log.Fatal(err)
+		}
 	}
 
 	fileOut, err := os.Create(path)
@@ -186,17 +189,23 @@ func saveFileFromHttp(path string, urlStr string) bool {
 }
 
 func download(k string, m media) bool {
+	rootPath := filepath.Join(fileDir, k, compileSpecialChar.ReplaceAllString(m.Title, "_"))
+	if filter.Exist(filterKey, rootPath) {
+		tools.Log.Info("exist:", rootPath)
+		return true
+	}
 
 	for p := 1; p < m.Page+1; p++ {
-		pathStr := filepath.Join(fileDir, k, compileSpecialChar.ReplaceAllString(m.Title, "_"), fmt.Sprintf("P%d", p))
+		pathStr := filepath.Join(rootPath, fmt.Sprintf("P%d", p))
 
 		if filter.Exist(filterKey, pathStr) {
 			tools.Log.Info("exist:", pathStr)
-			return true
+			continue
 		}
 
 		urlStr := fmt.Sprintf("https://www.bilibili.com/video/%s?p=%d", m.BvId, p)
-		tools.Log.Info("download url:", urlStr)
+		tools.Log.Infof("save > %s", pathStr)
+		tools.Log.Infof("download url:%s", urlStr)
 
 		body, err := httpClientGet(urlStr)
 		if err != nil {
@@ -217,15 +226,15 @@ func download(k string, m media) bool {
 		//tools.Log.Debug(audioUrlStr)
 
 		tools.Log.Info("download video...")
-		if ok := saveFileFromHttp(filepath.Join(pathStr, "video.mp4"), videoUrlStr); !ok {
+		if ok := saveFileFromHttp(filepath.Join(pathStr, "video.mp4"), videoUrlStr, true); !ok {
 			tools.Log.Errorf("save video file %s err", videoUrlStr)
 		}
 		tools.Log.Info("download audio...")
-		if ok := saveFileFromHttp(filepath.Join(pathStr, "audio.mp3"), audioUrlStr); !ok {
+		if ok := saveFileFromHttp(filepath.Join(pathStr, "audio.mp3"), audioUrlStr, false); !ok {
 			tools.Log.Errorf("save audio file %s err", audioUrlStr)
 		}
-		tools.Log.Info("save info...")
-		if ok := saveFile(filepath.Join(pathStr, "info.txt"), []byte(m.Intro)); !ok {
+		tools.Log.Info("download info...")
+		if ok := saveFile(filepath.Join(pathStr, "info.txt"), []byte(m.Intro), false); !ok {
 			tools.Log.Errorf("save info file err")
 		}
 
@@ -236,6 +245,13 @@ func download(k string, m media) bool {
 
 		filter.Save()
 	}
+
+	if !filter.Add(filterKey, rootPath) {
+		tools.Log.Error("filter add err rootPath:", rootPath)
+		return false
+	}
+
+	filter.Save()
 
 	return true
 }
@@ -274,5 +290,4 @@ func Start() {
 			}
 		}
 	}
-
 }
