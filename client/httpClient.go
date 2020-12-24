@@ -95,6 +95,28 @@ func httpClientDownloadByLength(fileOut *os.File, urlStr string, rangeStr string
 		return 0, fmt.Errorf("error download: %v", err)
 	}
 	defer resp.Body.Close()
+
+	if rangeStr == "bytes=0-10485760" && resp.StatusCode == http.StatusRequestedRangeNotSatisfiable {
+		//log.Printf("wrong status code: %d", resp.StatusCode)
+		contentRangeStr := resp.Header.Get("Content-Range")
+		if len(contentRangeStr) <= 0 {
+			return 0, err
+		}
+
+		rangeStrings := rangeCompile.FindStringSubmatch(contentRangeStr)
+		if len(rangeStrings) != 2 {
+			return 0, fmt.Errorf("error rangeStrings:%d != 2", len(rangeStrings))
+		}
+
+		rexpLengthMax, err := strconv.Atoi(rangeStrings[1])
+		if err != nil {
+			return 0, err
+		}
+
+		return httpClientDownloadByLength(fileOut, urlStr, fmt.Sprintf("bytes=0-%d", rexpLengthMax-1))
+
+	}
+
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
 		//log.Printf("wrong status code: %d", resp.StatusCode)
 		text, _ := ioutil.ReadAll(resp.Body)
@@ -137,6 +159,7 @@ func httpClientDownload(fileOut *os.File, urlStr string) (err error) {
 		backBuff.WriteString("\b")
 		lengthMax, err = httpClientDownloadByLength(fileOut, urlStr, rangeStr)
 		if err != nil {
+			tools.Log.Error(lengthMax, rangeStr)
 			return err
 		}
 		lengthMax--
