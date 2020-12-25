@@ -16,8 +16,7 @@ var (
 	fileDir            = "./data"
 	filterKey          = "FILEPATH"
 	compileSpecialChar = regexp.MustCompile(`[\\/:*?"<>|]`)
-	compileMediaInfo   = regexp.MustCompile(`"video":\[({"id".*?),"audio":\[({"id".*?),"support_formats"`)
-	compileMediaUrl    = regexp.MustCompile(`"id"[^"]+"baseUrl"[^"]+"([^"]+)"`)
+	compileMediaInfo   = regexp.MustCompile(`<script>[^<]*?window\.__playinfo__[^{]+({.*?)</\s*script>`)
 )
 
 func init() {
@@ -214,25 +213,32 @@ func download(k string, m media) bool {
 
 		result := compileMediaInfo.FindSubmatch(body)
 		//tools.Log.Debug(result)
-		if len(result) != 3 {
-			tools.Log.Warn("filter err regexp result != 1 && result[0] != 3")
+		if len(result) != 2 {
+			tools.Log.Warn("compileMediaInfo err regexp len(result) != 2")
 			return false
 		}
 
-		videoUrlStr := string(compileMediaUrl.FindSubmatch(result[1])[1])
-		audioUrlStr := string(compileMediaUrl.FindSubmatch(result[2])[1])
+		videoUrlStr, audioUrlStr := tools.GetMediaUrl(string(result[1]))
 
 		//tools.Log.Debug(videoUrlStr)
 		//tools.Log.Debug(audioUrlStr)
+		if len(videoUrlStr) > 0 {
+			tools.Log.Info("download video...")
+			if ok := saveFileFromHttp(filepath.Join(pathStr, "video.mp4"), videoUrlStr, true); !ok {
+				tools.Log.Errorf("save video file %s err", videoUrlStr)
+			}
+		} else {
+			tools.Log.Errorf("no video")
+		}
+		if len(audioUrlStr) > 0 {
+			tools.Log.Info("download audio...")
+			if ok := saveFileFromHttp(filepath.Join(pathStr, "audio.mp3"), audioUrlStr, false); !ok {
+				tools.Log.Errorf("save audio file %s err", audioUrlStr)
+			}
+		} else {
+			tools.Log.Errorf("no audio")
+		}
 
-		tools.Log.Info("download video...")
-		if ok := saveFileFromHttp(filepath.Join(pathStr, "video.mp4"), videoUrlStr, true); !ok {
-			tools.Log.Errorf("save video file %s err", videoUrlStr)
-		}
-		tools.Log.Info("download audio...")
-		if ok := saveFileFromHttp(filepath.Join(pathStr, "audio.mp3"), audioUrlStr, false); !ok {
-			tools.Log.Errorf("save audio file %s err", audioUrlStr)
-		}
 		tools.Log.Info("download info...")
 		if ok := saveFile(filepath.Join(pathStr, "info.txt"), []byte(m.Intro), false); !ok {
 			tools.Log.Errorf("save info file err")
@@ -282,6 +288,11 @@ func Start() {
 		tools.Log.Infof("get medias:%d", mn)
 
 		for j, m := range medias {
+			if tools.IsDel(m.Attr) {
+				tools.Log.Warnf("warn favList:%d/%d medias:%d/%d => bv:%s name:%s", i+1, fn, j+1, mn, m.BvId, m.Title)
+				continue
+			}
+
 			tools.Log.Infof("download favList:%d/%d medias:%d/%d => bv:%s name:%s", i+1, fn, j+1, mn, m.BvId, m.Title)
 			if ok := download(f.Title, m); ok {
 				tools.Log.Infof("download favList:%d/%d medias:%d/%d successfully", i+1, fn, j+1, mn)
