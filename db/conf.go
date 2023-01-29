@@ -3,14 +3,13 @@ package db
 import (
 	"bili/tools"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 )
 
 var (
-	confDbFilePath = "./data/conf.db.json"
+	confDbFilePath = "./conf/conf.db.json"
 	newConfDb      *ConfDb
 )
 
@@ -73,13 +72,19 @@ func (c *ConfDb) SetCookie(url *url.URL, cookies []*http.Cookie) {
 	}
 }
 
+func (c *ConfDb) AddExcludeFavorites(key string) {
+	if _, ok := c.ExcludeFavorites[key]; !ok {
+		c.ExcludeFavorites[key] = false
+	}
+}
+
 func (c *ConfDb) Save() {
 	// 保存conf
 	bytes, err := json.Marshal(c)
 	if err != nil {
 		panic(err)
 	}
-	err = ioutil.WriteFile(confDbFilePath, bytes, 0777)
+	err = os.WriteFile(confDbFilePath, bytes, 0777)
 	if err != nil {
 		panic(err)
 	}
@@ -87,7 +92,7 @@ func (c *ConfDb) Save() {
 
 func (c *ConfDb) Read() {
 	// 读取conf
-	bytes, err := ioutil.ReadFile(confDbFilePath)
+	bytes, err := os.ReadFile(confDbFilePath)
 	if err != nil {
 		c.Save()
 		return

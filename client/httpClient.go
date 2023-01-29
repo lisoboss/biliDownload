@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -46,7 +45,7 @@ func formatBody(resp *http.Response) (body []byte, err error) {
 	if rc := resp.Cookies(); len(rc) > 0 {
 		Conf.SetCookie(resp.Request.URL, rc)
 	}
-	body, _ = ioutil.ReadAll(resp.Body)
+	body, _ = io.ReadAll(resp.Body)
 	return
 }
 
@@ -119,7 +118,7 @@ func httpClientDownloadByLength(fileOut *os.File, urlStr string, rangeStr string
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
 		//log.Printf("wrong status code: %d", resp.StatusCode)
-		text, _ := ioutil.ReadAll(resp.Body)
+		text, _ := io.ReadAll(resp.Body)
 		return 0, fmt.Errorf("error status code: %d\n%s", resp.StatusCode, text)
 	}
 	if rc := resp.Cookies(); len(rc) > 0 {

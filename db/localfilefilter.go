@@ -3,12 +3,11 @@ package db
 import (
 	"bili/tools"
 	"encoding/json"
-	"io/ioutil"
 	"os"
 )
 
 var (
-	filterDbFilePath = "./data/filter.db.json"
+	filterDbFilePath = "./conf/filter.db.json"
 	local            = &LocalFileFilter{}
 )
 
@@ -30,7 +29,7 @@ func (l *LocalFileFilter) Init() {
 		local.Save()
 	}
 
-	bytes, err := ioutil.ReadFile(filterDbFilePath)
+	bytes, err := os.ReadFile(filterDbFilePath)
 	if err != nil {
 		tools.Log.Fatal(err)
 	}
@@ -49,7 +48,7 @@ func (l *LocalFileFilter) Save() {
 	if err != nil {
 		tools.Log.Fatal(err)
 	}
-	err = ioutil.WriteFile(filterDbFilePath, bytes, os.ModePerm)
+	err = os.WriteFile(filterDbFilePath, bytes, os.ModePerm)
 	if err != nil {
 		tools.Log.Fatal(err)
 	}

@@ -17,4 +17,7 @@
 # Idea
 /.idea
 /log
+/tmp
 /data
+/conf
+/build

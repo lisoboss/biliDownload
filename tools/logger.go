@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"strconv"
@@ -17,7 +16,7 @@ import (
 var Log *_Logger
 
 const (
-	logConfigFilePath = "./data/logs.config.json"
+	logConfigFilePath = "./conf/logs.config.json"
 	logConfigStr      = `{
 	"logs" : [{
 	"name":"default", 
@@ -30,7 +29,7 @@ const (
 )
 
 func initLogConfigFile() error {
-	err := ioutil.WriteFile(logConfigFilePath, []byte(logConfigStr), os.ModePerm)
+	err := os.WriteFile(logConfigFilePath, []byte(logConfigStr), os.ModePerm)
 	return err
 }
 
@@ -83,7 +82,9 @@ const (
 
 /*
 ===================
- utils functions
+
+	utils functions
+
 ===================
 */
 func fileSize(file string) int64 {
@@ -102,7 +103,9 @@ func isExist(path string) bool {
 
 /*
 ===================
- log handlers
+
+	log handlers
+
 ===================
 */
 type Handler interface {
@@ -159,7 +162,9 @@ type RotatingHandler struct {
 
 /*
 ===================
- json config
+
+	json config
+
 ===================
 */
 type logConfig struct {
@@ -280,7 +285,7 @@ func newHandler(lg logConfig) (Handler, error) {
 
 func NewLogger(name string) error {
 	filename := logConfigFilePath
-	bytes, err := ioutil.ReadFile(filename)
+	bytes, err := os.ReadFile(filename)
 	if err != nil {
 		return err
 	}
@@ -515,7 +520,9 @@ func (h *RotatingHandler) fileCheck() {
 
 /*
 ===================
- logger
+
+	logger
+
 ===================
 */
 type _Logger struct {
