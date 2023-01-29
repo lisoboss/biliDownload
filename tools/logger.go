@@ -29,8 +29,7 @@ const (
 )
 
 func initLogConfigFile() error {
-	err := os.WriteFile(logConfigFilePath, []byte(logConfigStr), os.ModePerm)
-	return err
+	return os.WriteFile(logConfigFilePath, []byte(logConfigStr), os.ModePerm)
 }
 
 func init() {
@@ -101,13 +100,7 @@ func isExist(path string) bool {
 	return err == nil || os.IsExist(err)
 }
 
-/*
-===================
-
-	log handlers
-
-===================
-*/
+// Handler log handlers
 type Handler interface {
 	SetOutput(w io.Writer)
 	Output(calldepth int, s string)
