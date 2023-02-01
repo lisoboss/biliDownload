@@ -31,7 +31,7 @@ func main() {
 
 func listenSignal() {
 	//创建监听退出chan
-	c := make(chan os.Signal)
+	c := make(chan os.Signal, 1)
 	//监听指定信号 ctrl+c kill
 	signal.Notify(c, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM,
 		syscall.SIGQUIT, syscall.SIGUSR1, syscall.SIGUSR2)
