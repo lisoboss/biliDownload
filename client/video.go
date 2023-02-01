@@ -18,7 +18,6 @@ var (
 )
 
 func saveFile(path string, data []byte, createDirBool bool) bool {
-
 	if createDirBool {
 		if err := tools.CreateDirFromFilePath(path); err != nil {
 			tools.Log.Fatal(err)
@@ -96,25 +95,49 @@ func download(k, title, bvId, intro string, page int) bool {
 
 		//tools.Log.Debug(videoUrlStr)
 		//tools.Log.Debug(audioUrlStr)
+		var (
+			hasVideo  = false
+			videoPath = ""
+			hasAudio  = false
+			audioPath = ""
+		)
 		if len(videoUrlStr) > 0 {
 			tools.Log.Info("download video...")
-			if ok := saveFileFromHttp(filepath.Join(pathStr, "video.mp4"), videoUrlStr, true); !ok {
+			videoPath = filepath.Join(pathStr, "video.mp4")
+			if ok := saveFileFromHttp(videoPath, videoUrlStr, true); !ok {
 				tools.Log.Errorf("save video file %s err", videoUrlStr)
+			} else {
+				hasVideo = true
 			}
 		} else {
 			tools.Log.Errorf("no video")
 		}
 		if len(audioUrlStr) > 0 {
 			tools.Log.Info("download audio...")
-			if ok := saveFileFromHttp(filepath.Join(pathStr, "audio.mp3"), audioUrlStr, false); !ok {
+			audioPath = filepath.Join(pathStr, "audio.mp3")
+			if ok := saveFileFromHttp(audioPath, audioUrlStr, false); !ok {
 				tools.Log.Errorf("save audio file %s err", audioUrlStr)
+			} else {
+				hasAudio = true
 			}
 		} else {
 			tools.Log.Errorf("no audio")
 		}
+		if hasVideo && hasAudio {
+			tools.Log.Info("merge video audio...")
+			if err1 := tools.MediaMerge(videoPath, audioPath, videoPath); err1 != nil {
+				tools.Log.Errorf("merge video audio err: %s", err1)
+			} else {
+				tools.Log.Info("remove audio...")
+				if err2 := os.Remove(audioPath); err2 != nil {
+					tools.Log.Errorf("remove audio err: %s", err2)
+				}
+			}
+		}
 
 		tools.Log.Info("download info...")
-		if ok := saveFile(filepath.Join(pathStr, "info.txt"), []byte(intro), false); !ok {
+		infoStr := fmt.Sprintf("%s\n%s", urlStr, intro)
+		if ok := saveFile(filepath.Join(pathStr, "info.txt"), []byte(infoStr), false); !ok {
 			tools.Log.Errorf("save info file err")
 		}
 
@@ -132,6 +155,5 @@ func download(k, title, bvId, intro string, page int) bool {
 	}
 
 	filter.Save()
-
 	return true
 }

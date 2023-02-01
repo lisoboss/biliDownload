@@ -17,6 +17,7 @@ type ConfDb struct {
 	Cookies          map[string]map[string]http.Cookie `json:"cookies"`
 	UpMid            float64                           `json:"up_mid"`
 	ExcludeFavorites map[string]bool                   `json:"exclude_favorites"`
+	ExcludeCollects  map[string]bool                   `json:"exclude_collects"`
 }
 
 func init() {
@@ -28,6 +29,10 @@ func init() {
 	}
 	if len(newConfDb.ExcludeFavorites) <= 0 {
 		newConfDb.ExcludeFavorites = map[string]bool{"不下载视频的收藏夹名称1": true, "默认收藏夹": true}
+		newConfDb.Save()
+	}
+	if len(newConfDb.ExcludeCollects) <= 0 {
+		newConfDb.ExcludeCollects = map[string]bool{"不下载视频的订阅名称1": true}
 		newConfDb.Save()
 	}
 	//log.Printf("init newConfDb: %v", newConfDb)
@@ -49,7 +54,7 @@ func NewConf() *ConfDb {
 }
 
 func (c *ConfDb) Cookie(key string) (cookies []*http.Cookie) {
-	for key1, _ := range c.Cookies[key] {
+	for key1 := range c.Cookies[key] {
 		cookie := c.Cookies[key][key1]
 		cookies = append(cookies, &cookie)
 	}
@@ -74,7 +79,15 @@ func (c *ConfDb) SetCookie(url *url.URL, cookies []*http.Cookie) {
 
 func (c *ConfDb) AddExcludeFavorites(key string) {
 	if _, ok := c.ExcludeFavorites[key]; !ok {
+		tools.Log.Infof("conf ExcludeFavorites add %s", key)
 		c.ExcludeFavorites[key] = false
+	}
+}
+
+func (c *ConfDb) AddExcludeCollects(key string) {
+	if _, ok := c.ExcludeCollects[key]; !ok {
+		tools.Log.Infof("conf ExcludeCollects add %s", key)
+		c.ExcludeCollects[key] = false
 	}
 }
 

@@ -14,9 +14,6 @@ var (
 	loginInfoStop  = time.Tick(time.Second * 60)
 )
 
-func init() {
-}
-
 type info struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`

@@ -27,7 +27,7 @@ type favListInfo struct {
 	} `json:"data"`
 }
 
-type media struct {
+type favMedia struct {
 	Attr     int         `json:"attr"`
 	BvId     string      `json:"bv_id"`
 	BvId2    string      `json:"bvid"`
@@ -46,13 +46,13 @@ type media struct {
 	Type     int         `json:"type"`
 }
 
-type mediasInfo struct {
+type favMediasInfo struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 	Ttl     int    `json:"ttl"`
 	Data    struct {
 		Info   interface{} `json:"info"`
-		Medias []media     `json:"medias"`
+		Medias []favMedia  `json:"medias"`
 	} `json:"data"`
 }
 
@@ -76,7 +76,7 @@ func getFavListInfo() (favList []fav, err error) {
 	return
 }
 
-func getMediaInfo(f fav) (medias []media, err error) {
+func getFavMediaInfo(f fav) (medias []favMedia, err error) {
 	pn := 1
 	count := 0
 	for {
@@ -88,7 +88,7 @@ func getMediaInfo(f fav) (medias []media, err error) {
 		if err != nil {
 			return medias, err
 		}
-		var mi mediasInfo
+		var mi favMediasInfo
 		err = json.Unmarshal(body, &mi)
 		if err != nil {
 			return medias, err
@@ -101,10 +101,10 @@ func getMediaInfo(f fav) (medias []media, err error) {
 		count += len(mi.Data.Medias)
 		medias = append(medias, mi.Data.Medias...)
 	}
-	return medias, err
+	return
 }
 
-func favListStart() {
+func favStart() {
 	defer filter.Save()
 	favList, err := getFavListInfo()
 	if err != nil {
@@ -125,7 +125,7 @@ func favListStart() {
 			continue
 		}
 
-		medias, err := getMediaInfo(f)
+		medias, err := getFavMediaInfo(f)
 		if err != nil {
 			tools.Log.Fatal(err)
 		}

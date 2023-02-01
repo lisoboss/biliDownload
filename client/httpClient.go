@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"os"
 	"regexp"
@@ -21,20 +20,6 @@ var (
 	rangeCompile = regexp.MustCompile(`/(\d+)`)
 	sleepChan    = time.Tick(time.Second * 1)
 )
-
-func init() {
-	Conf = db.NewConf()
-	httpClient = &http.Client{}
-
-	httpClient.Jar, _ = cookiejar.New(nil)
-
-	if len(Conf.Cookies) > 0 {
-		for key := range Conf.Cookies {
-			tools.Log.Debug(key)
-			httpClient.Jar.SetCookies(&url.URL{Host: key, Scheme: "https"}, Conf.Cookie(key))
-		}
-	}
-}
 
 func formatBody(resp *http.Response) (body []byte, err error) {
 	defer resp.Body.Close()
