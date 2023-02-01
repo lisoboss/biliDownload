@@ -34,7 +34,7 @@ func listenSignal() {
 	c := make(chan os.Signal, 1)
 	//监听指定信号 ctrl+c kill
 	signal.Notify(c, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM,
-		syscall.SIGQUIT, syscall.SIGUSR1, syscall.SIGUSR2)
+		syscall.SIGQUIT)
 	go func() {
 		for s := range c {
 			switch s {
@@ -42,10 +42,6 @@ func listenSignal() {
 				fmt.Println("Program Exit...", s)
 				client.ExitWork()
 				os.Exit(0)
-			case syscall.SIGUSR1:
-				fmt.Println("usr1 signal", s)
-			case syscall.SIGUSR2:
-				fmt.Println("usr2 signal", s)
 			default:
 				fmt.Println("other signal", s)
 			}
