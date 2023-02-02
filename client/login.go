@@ -1,8 +1,8 @@
 package client
 
 import (
-	"bili/server"
-	"bili/tools"
+	"biliDownload/server"
+	"biliDownload/tools"
 	"encoding/json"
 	"fmt"
 	"net/url"

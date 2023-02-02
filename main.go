@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bili/client"
-	"bili/tools"
+	"biliDownload/client"
+	"biliDownload/tools"
 	"fmt"
 	"os"
 	"os/signal"

@@ -3,8 +3,14 @@ package media
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
 	"math"
 )
+
+type Reader interface {
+	Read(n uint64) ([]byte, error)
+	Over() bool
+}
 
 type Header interface {
 	Type() string
@@ -14,6 +20,7 @@ type Header interface {
 	Load(bytes []byte)
 	DataSize() uint8
 	Data() []byte
+	LoadFrom(Reader) error
 }
 
 type BoxHeader struct {
@@ -78,6 +85,39 @@ func (h *BoxHeader) AddLength(l uint64) {
 	}
 }
 
+func (h *BoxHeader) addDataFrom(r Reader, n uint64) error {
+	if b, err := r.Read(n); err != nil {
+		return err
+	} else {
+		h.data = append(h.data, b...)
+	}
+	return nil
+}
+
+func (h *BoxHeader) LoadFrom(r Reader) error {
+	h.dataSize = 4
+	if err := h.addDataFrom(r, 4); err != nil {
+		if r.Over() {
+			return io.EOF
+		}
+		return err
+	}
+	h.size = binary.BigEndian.Uint32(h.data[:h.dataSize])
+	if h.size == 0 {
+		if err := h.addDataFrom(r, 8); err != nil {
+			return err
+		}
+		h.largeSize = binary.BigEndian.Uint64(h.data[h.dataSize : h.dataSize+8])
+		h.dataSize += 8
+	}
+	if err := h.addDataFrom(r, 4); err != nil {
+		return err
+	}
+	h.type_ = string(h.data[h.dataSize : h.dataSize+4])
+	h.dataSize += 4
+	return nil
+}
+
 func (h *BoxHeader) Load(bytes []byte) {
 	h.dataSize = 4
 	h.size = binary.BigEndian.Uint32(bytes[:h.dataSize])
@@ -100,4 +140,16 @@ func (h *FullBoxHeader) Load(bytes []byte) {
 	h.extend = bytes[h.dataSize : h.dataSize+4]
 	h.dataSize += 4
 	h.data = bytes[:h.dataSize]
+}
+
+func (h *FullBoxHeader) LoadFrom(r Reader) error {
+	if err := h.BoxHeader.LoadFrom(r); err != nil {
+		return err
+	}
+	if err := h.addDataFrom(r, 4); err != nil {
+		return err
+	}
+	h.extend = h.data[h.dataSize : h.dataSize+4]
+	h.dataSize += 4
+	return nil
 }

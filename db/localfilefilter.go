@@ -1,7 +1,7 @@
 package db
 
 import (
-	"bili/tools"
+	"biliDownload/tools"
 	"encoding/json"
 	"os"
 )

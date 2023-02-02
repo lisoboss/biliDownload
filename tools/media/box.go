@@ -43,6 +43,20 @@ func (b *Box) AddLength(l uint64) {
 	}
 }
 
+func (b *Box) LoadFrom(r Reader) (err error) {
+	b.head = new(BoxHeader)
+	if err = b.head.LoadFrom(r); err != nil {
+		return
+	}
+	if b.data, err = r.Read(b.head.Length() - uint64(b.head.DataSize())); err != nil {
+		return
+	}
+	if IsContainerBox(b) {
+		b.LoadContainerBox()
+	}
+	return
+}
+
 func (b *Box) Load(bytes []byte) []byte {
 	b.head = new(BoxHeader)
 	b.head.Load(bytes)
@@ -125,6 +139,17 @@ type FullBox struct {
 	Box
 }
 
+func (b *FullBox) LoadFrom(r Reader) (err error) {
+	b.head = new(FullBoxHeader)
+	if err = b.head.LoadFrom(r); err != nil {
+		return
+	}
+	if b.data, err = r.Read(b.head.Length() - uint64(b.head.DataSize())); err != nil {
+		return
+	}
+	return
+}
+
 func (b *FullBox) Load(bytes []byte) []byte {
 	b.head = new(FullBoxHeader)
 	b.head.Load(bytes)
@@ -142,4 +167,12 @@ func (b *FullBox) Flags() uint16 {
 	var _b = []byte{0}
 	_b = append(_b, b.head.Data()[3:4]...)
 	return binary.BigEndian.Uint16(_b)
+}
+
+func LoadBoxFrom(r Reader) (*Box, error) {
+	box := new(Box)
+	if err := box.LoadFrom(r); err != nil {
+		return nil, err
+	}
+	return box, nil
 }

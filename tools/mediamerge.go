@@ -1,7 +1,8 @@
 package tools
 
 import (
-	"bili/tools/media"
+	"biliDownload/tools/media"
+	"io"
 	"os"
 )
 
@@ -68,12 +69,8 @@ func MediaMerge(videoPath, audioPath, savePath string) (err error) {
 	for rvIndex < rvBoxListLen || raIndex < raBoxListLen {
 		if rvIndex < rvBoxListLen {
 			box := rvBoxList[rvIndex]
-			_mbox := box.GetBox("mfhd")
-			_movieFragmentHeaderBox := new(media.MovieFragmentHeaderBox)
-			_movieFragmentHeaderBox.Load(_mbox.Dump())
-			_movieFragmentHeaderBox.SetSequenceNumber(sequenceNumber)
+			updateMovieFragmentHeaderBox(box, sequenceNumber)
 			sequenceNumber++
-			_mbox.Load(_movieFragmentHeaderBox.Dump())
 			newMedia.AddBox(box)
 			rvIndex++
 			newMedia.AddBox(rvBoxList[rvIndex])
@@ -81,12 +78,8 @@ func MediaMerge(videoPath, audioPath, savePath string) (err error) {
 		}
 		if raIndex < raBoxListLen {
 			box := raBoxList[raIndex]
-			_mbox := box.GetBox("mfhd")
-			_movieFragmentHeaderBox := new(media.MovieFragmentHeaderBox)
-			_movieFragmentHeaderBox.Load(_mbox.Dump())
-			_movieFragmentHeaderBox.SetSequenceNumber(sequenceNumber)
+			updateMovieFragmentHeaderBox(box, sequenceNumber)
 			sequenceNumber++
-			_mbox.Load(_movieFragmentHeaderBox.Dump())
 			newMedia.AddBox(box)
 			raIndex++
 			newMedia.AddBox(raBoxList[raIndex])
@@ -104,4 +97,190 @@ func MediaMerge(videoPath, audioPath, savePath string) (err error) {
 	}()
 	_, err = fileOut.Write(newMedia.Dump())
 	return
+}
+
+func MediaMergeFromReader(videoReader, audioReader *Reader, savePath string) (err error) {
+	// create dir
+	if err = CreateDirFromFilePath(savePath); err != nil {
+		Log.Fatal(err)
+	}
+	// save
+	fileOut, err := os.Create(savePath)
+	if err != nil {
+		return
+	}
+	defer func() {
+		_ = fileOut.Close()
+	}()
+
+	// get 'moov'
+	var (
+		vMoov *media.Box
+		aMoov *media.Box
+	)
+	for true {
+		box, vErr := media.LoadBoxFrom(videoReader)
+		if vErr != nil {
+			return vErr
+		}
+		if box.Type() == "moov" {
+			vMoov = box
+			break
+		}
+		// save box
+		if _, err = fileOut.Write(box.Dump()); err != nil {
+			return
+		}
+	}
+	for true {
+		box, vErr := media.LoadBoxFrom(audioReader)
+		if vErr != nil {
+			return vErr
+		}
+		if box.Type() == "moov" {
+			aMoov = box
+			break
+		}
+	}
+
+	// TrackExtends
+	rvTrackExtends := vMoov.GetBox("trex")
+	raTrackExtends := aMoov.GetBox("trex")
+
+	// rVideo add rAudio 'trex'
+	raTrackExtendsLength := raTrackExtends.Length()
+	_pBox := rvTrackExtends.ParentBox()
+	_pBox.AddContainerBox(raTrackExtends)
+	_pBox.AddLength(raTrackExtendsLength)
+
+	// Track
+	rvTrack := vMoov.GetBox("trak")
+	raTrack := aMoov.GetBox("trak")
+
+	// rVideo add rAudio 'trak'
+	raTrackLength := raTrack.Length()
+	_pBox = rvTrack.ParentBox()
+	_pBox.AddContainerBox(raTrack)
+	_pBox.AddLength(raTrackLength)
+
+	var sequenceNumber uint32 = 1
+
+	// save vMoov box
+	if _, err = fileOut.Write(vMoov.Dump()); err != nil {
+		return
+	}
+
+	// to moof
+	for true {
+		box, vErr := media.LoadBoxFrom(videoReader)
+		if vErr != nil {
+			return vErr
+		}
+		if box.Type() == "moof" {
+			// save moof
+			updateMovieFragmentHeaderBox(box, sequenceNumber)
+			sequenceNumber++
+			if _, err = fileOut.Write(box.Dump()); err != nil {
+				return
+			}
+
+			// save mdat
+			box, err = media.LoadBoxFrom(videoReader)
+			if err != nil {
+				return err
+			}
+			if _, err = fileOut.Write(box.Dump()); err != nil {
+				return
+			}
+			break
+		}
+		// save box
+		if _, err = fileOut.Write(box.Dump()); err != nil {
+			return
+		}
+	}
+	for true {
+		box, vErr := media.LoadBoxFrom(audioReader)
+		if vErr != nil {
+			return vErr
+		}
+		if box.Type() == "moof" {
+			// save moof
+			updateMovieFragmentHeaderBox(box, sequenceNumber)
+			sequenceNumber++
+			if _, err = fileOut.Write(box.Dump()); err != nil {
+				return
+			}
+
+			// save mdat
+			box, err = media.LoadBoxFrom(audioReader)
+			if err != nil {
+				return err
+			}
+			if _, err = fileOut.Write(box.Dump()); err != nil {
+				return
+			}
+			break
+		}
+	}
+
+	// save data(moof+mdat)
+	for !videoReader.Over() || !audioReader.Over() {
+		if !videoReader.Over() {
+			if vBox, vErr := media.LoadBoxFrom(videoReader); vErr != nil {
+				if vErr != io.EOF {
+					return vErr
+				}
+			} else {
+				// save moof
+				updateMovieFragmentHeaderBox(vBox, sequenceNumber)
+				sequenceNumber++
+				if _, err = fileOut.Write(vBox.Dump()); err != nil {
+					return
+				}
+
+				// save mdat
+				vBox, err = media.LoadBoxFrom(videoReader)
+				if err != nil {
+					return err
+				}
+				if _, err = fileOut.Write(vBox.Dump()); err != nil {
+					return
+				}
+			}
+		}
+		if !audioReader.Over() {
+			if vBox, vErr := media.LoadBoxFrom(audioReader); vErr != nil {
+				if vErr != io.EOF {
+					return vErr
+				}
+			} else {
+				// save moof
+				updateMovieFragmentHeaderBox(vBox, sequenceNumber)
+				sequenceNumber++
+				if _, err = fileOut.Write(vBox.Dump()); err != nil {
+					return
+				}
+
+				// save mdat
+				vBox, err = media.LoadBoxFrom(audioReader)
+				if err != nil {
+					return err
+				}
+				if _, err = fileOut.Write(vBox.Dump()); err != nil {
+					return
+				}
+			}
+		}
+	}
+
+	return
+}
+
+func updateMovieFragmentHeaderBox(box *media.Box, sequenceNumber uint32) {
+	_mbox := box.GetBox("mfhd")
+	_movieFragmentHeaderBox := new(media.MovieFragmentHeaderBox)
+	_movieFragmentHeaderBox.Load(_mbox.Dump())
+	_movieFragmentHeaderBox.SetSequenceNumber(sequenceNumber)
+	_mbox.Load(_movieFragmentHeaderBox.Dump())
 }

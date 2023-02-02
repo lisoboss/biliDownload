@@ -1,7 +1,7 @@
 package client
 
 import (
-	"bili/tools"
+	"biliDownload/tools"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -63,94 +63,151 @@ func download(k, title, bvId, intro string, page int) bool {
 	}
 
 	for p := 1; p < page+1; p++ {
-		urlStr := fmt.Sprintf("https://www.bilibili.com/video/%s?p=%d", bvId, p)
-		tools.Log.Infof("download url:%s", urlStr)
-		body, err := httpClientGet(urlStr)
-		if err != nil {
-			tools.Log.Fatal(err)
-		}
-
-		result := compileMediaTitle.FindSubmatch(body)
-		tools.Log.Debug(result)
-		if len(result) != 2 {
-			tools.Log.Warn("compileMediaTitle err regexp len(result) != 2")
-			return false
-		}
-
-		pathStr := filepath.Join(rootPath, fmt.Sprintf("P%d_%s", p, strings.Trim(string(result[1]), " ")))
-		if filter.Exist(filterKey, pathStr) {
-			tools.Log.Info("exist:", pathStr)
-			continue
-		}
-		tools.Log.Infof("save > %s", pathStr)
-
-		result = compileMediaInfo.FindSubmatch(body)
-		//tools.Log.Debug(result)
-		if len(result) != 2 {
-			tools.Log.Warn("compileMediaInfo err regexp len(result) != 2")
-			return false
-		}
-
-		videoUrlStr, audioUrlStr := tools.GetMediaUrl(string(result[1]))
-
-		//tools.Log.Debug(videoUrlStr)
-		//tools.Log.Debug(audioUrlStr)
-		var (
-			hasVideo  = false
-			videoPath = ""
-			hasAudio  = false
-			audioPath = ""
-		)
-		if len(videoUrlStr) > 0 {
-			tools.Log.Info("download video...")
-			videoPath = filepath.Join(pathStr, "video.mp4")
-			if ok := saveFileFromHttp(videoPath, videoUrlStr, true); !ok {
-				tools.Log.Errorf("save video file %s err", videoUrlStr)
-			} else {
-				hasVideo = true
-			}
-		} else {
-			tools.Log.Errorf("no video")
-		}
-		if len(audioUrlStr) > 0 {
-			tools.Log.Info("download audio...")
-			audioPath = filepath.Join(pathStr, "audio.mp3")
-			if ok := saveFileFromHttp(audioPath, audioUrlStr, false); !ok {
-				tools.Log.Errorf("save audio file %s err", audioUrlStr)
-			} else {
-				hasAudio = true
-			}
-		} else {
-			tools.Log.Errorf("no audio")
-		}
-		if hasVideo && hasAudio {
-			tools.Log.Info("merge video audio...")
-			if err1 := tools.MediaMerge(videoPath, audioPath, videoPath); err1 != nil {
-				tools.Log.Errorf("merge video audio err: %s", err1)
-			} else {
-				tools.Log.Info("remove audio...")
-				if err2 := os.Remove(audioPath); err2 != nil {
-					tools.Log.Errorf("remove audio err: %s", err2)
-				}
+		if !_downloadAndMerge(rootPath, bvId, intro, p) {
+			if !_download(rootPath, bvId, intro, p) {
+				return false
 			}
 		}
-
-		tools.Log.Info("download info...")
-		infoStr := fmt.Sprintf("%s\n%s", urlStr, intro)
-		if ok := saveFile(filepath.Join(pathStr, "info.txt"), []byte(infoStr), false); !ok {
-			tools.Log.Errorf("save info file err")
-		}
-
-		if !filter.Add(filterKey, pathStr) {
-			tools.Log.Error("filter add err pathStr:", pathStr)
-			return false
-		}
-
-		filter.Save()
 	}
 
 	if !filter.Add(filterKey, rootPath) {
 		tools.Log.Error("filter add err rootPath:", rootPath)
+		return false
+	}
+
+	filter.Save()
+	return true
+}
+
+func _download(rootPath, bvId, intro string, p int) bool {
+	urlStr := fmt.Sprintf("https://www.bilibili.com/video/%s?p=%d", bvId, p)
+	tools.Log.Infof("download url:%s", urlStr)
+	body, err := httpClientGet(urlStr)
+	if err != nil {
+		tools.Log.Fatal(err)
+	}
+
+	result := compileMediaTitle.FindSubmatch(body)
+	tools.Log.Debug(result)
+	if len(result) != 2 {
+		tools.Log.Warn("compileMediaTitle err regexp len(result) != 2")
+		return false
+	}
+
+	pathStr := filepath.Join(rootPath, fmt.Sprintf("P%d_%s", p, strings.Trim(string(result[1]), " ")))
+	if filter.Exist(filterKey, pathStr) {
+		tools.Log.Info("exist:", pathStr)
+		return true
+	}
+	tools.Log.Infof("save > %s", pathStr)
+
+	result = compileMediaInfo.FindSubmatch(body)
+	//tools.Log.Debug(result)
+	if len(result) != 2 {
+		tools.Log.Warn("compileMediaInfo err regexp len(result) != 2")
+		return false
+	}
+
+	videoUrlStr, audioUrlStr := tools.GetMediaUrl(string(result[1]))
+
+	//tools.Log.Debug(videoUrlStr)
+	//tools.Log.Debug(audioUrlStr)
+	var (
+		videoPath = ""
+		audioPath = ""
+	)
+	if len(videoUrlStr) > 0 {
+		tools.Log.Info("download video...")
+		videoPath = filepath.Join(pathStr, "video.mp4")
+		if ok := saveFileFromHttp(videoPath, videoUrlStr, true); !ok {
+			tools.Log.Errorf("save video file %s err", videoUrlStr)
+		}
+	} else {
+		tools.Log.Errorf("no video")
+	}
+	if len(audioUrlStr) > 0 {
+		tools.Log.Info("download audio...")
+		audioPath = filepath.Join(pathStr, "audio.mp3")
+		if ok := saveFileFromHttp(audioPath, audioUrlStr, false); !ok {
+			tools.Log.Errorf("save audio file %s err", audioUrlStr)
+		}
+	} else {
+		tools.Log.Errorf("no audio")
+	}
+
+	tools.Log.Info("download info...")
+	infoStr := fmt.Sprintf("%s\n%s", urlStr, intro)
+	if ok := saveFile(filepath.Join(pathStr, "info.txt"), []byte(infoStr), false); !ok {
+		tools.Log.Errorf("save info file err")
+	}
+
+	if !filter.Add(filterKey, pathStr) {
+		tools.Log.Error("filter add err pathStr:", pathStr)
+		return false
+	}
+
+	filter.Save()
+	return true
+}
+func _downloadAndMerge(rootPath, bvId, intro string, p int) bool {
+	urlStr := fmt.Sprintf("https://www.bilibili.com/video/%s?p=%d", bvId, p)
+	tools.Log.Infof("download url:%s", urlStr)
+	body, err := httpClientGet(urlStr)
+	if err != nil {
+		tools.Log.Fatal(err)
+	}
+
+	result := compileMediaTitle.FindSubmatch(body)
+	tools.Log.Debug(result)
+	if len(result) != 2 {
+		tools.Log.Warn("compileMediaTitle err regexp len(result) != 2")
+		return false
+	}
+
+	pathStr := filepath.Join(rootPath, fmt.Sprintf("P%d_%s", p, strings.Trim(string(result[1]), " ")))
+	if filter.Exist(filterKey, pathStr) {
+		tools.Log.Info("exist:", pathStr)
+		return true
+	}
+	tools.Log.Infof("save > %s", pathStr)
+
+	result = compileMediaInfo.FindSubmatch(body)
+	//tools.Log.Debug(result)
+	if len(result) != 2 {
+		tools.Log.Warn("compileMediaInfo err regexp len(result) != 2")
+		return false
+	}
+
+	videoUrlStr, audioUrlStr := tools.GetMediaUrl(string(result[1]))
+
+	//tools.Log.Debug(videoUrlStr)
+	//tools.Log.Debug(audioUrlStr)
+	tools.Log.Info("download videoAndAudio...")
+	videoPath := filepath.Join(pathStr, "video.mp4")
+	audioReader, err := NewReaderFromNetwork(audioUrlStr)
+	if err != nil {
+		tools.Log.Warnf("NewReaderFromNetwork audioUrlStr err: %s", err)
+		return false
+	}
+	videoReader, err := NewReaderFromNetwork(videoUrlStr)
+	if err != nil {
+		tools.Log.Errorf("NewReaderFromNetwork videoUrlStr err: %s", err)
+		return false
+	}
+	err = tools.MediaMergeFromReader(videoReader, audioReader, videoPath)
+	if err != nil {
+		tools.Log.Errorf("MediaMergeFromReader err: %s", err)
+		return false
+	}
+
+	tools.Log.Info("download info...")
+	infoStr := fmt.Sprintf("%s\n%s", urlStr, intro)
+	if ok := saveFile(filepath.Join(pathStr, "info.txt"), []byte(infoStr), false); !ok {
+		tools.Log.Errorf("save info file err")
+	}
+
+	if !filter.Add(filterKey, pathStr) {
+		tools.Log.Error("filter add err pathStr:", pathStr)
 		return false
 	}
 

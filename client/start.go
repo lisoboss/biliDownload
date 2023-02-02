@@ -1,8 +1,8 @@
 package client
 
 import (
-	"bili/db"
-	"bili/tools"
+	"biliDownload/db"
+	"biliDownload/tools"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"

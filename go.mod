@@ -1,4 +1,4 @@
-module bili
+module biliDownload
 
 go 1.18
 

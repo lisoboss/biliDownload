@@ -1,8 +1,8 @@
 package client
 
 import (
-	"bili/db"
-	"bili/tools"
+	"biliDownload/db"
+	"biliDownload/tools"
 	"bytes"
 	"fmt"
 	"io"
@@ -139,7 +139,7 @@ func httpClientDownload(fileOut *os.File, urlStr string) (err error) {
 			max = lengthMax
 		}
 		rangeStr := fmt.Sprintf("bytes=%d-%d", min, max)
-		fmt.Print(".")
+		Loading()
 		backBuff.WriteString("\b")
 		lengthMax, err = httpClientDownloadByLength(fileOut, urlStr, rangeStr)
 		if err != nil {
@@ -153,4 +153,120 @@ func httpClientDownload(fileOut *os.File, urlStr string) (err error) {
 	}
 	fmt.Print(string(backBuff.Bytes()))
 	return err
+}
+
+func NewReaderFromNetwork(urlStr string) (r *tools.Reader, err error) {
+	tools.Log.Debug("download", urlStr)
+	length := 1024 * 1024 * 5
+
+	lengthMax := 1
+	min := 0
+	max := 0
+	r = tools.NewReader(func() (bytes []byte, err1 error) {
+		if lengthMax < 1 {
+			return nil, io.EOF
+		}
+		max = min + length
+		if lengthMax != 1 && max > lengthMax {
+			max = lengthMax
+		}
+		rangeStr := fmt.Sprintf("bytes=%d-%d", min, max)
+		Loading()
+		bytes, lengthMax, err1 = httpClientDownloadBytesByLength(urlStr, rangeStr)
+		if err1 != nil {
+			tools.Log.Error(lengthMax, rangeStr)
+			return
+		}
+		lengthMax--
+		if lengthMax <= max {
+			lengthMax = -1
+		}
+		min = max + 1
+		return
+	})
+	err = r.CallAddBytesFunc()
+	return
+}
+
+func httpClientDownloadBytesByLength(urlStr string, rangeStr string) (bytes []byte, lengthMax int, err error) {
+	<-sleepChan
+	req, err := http.NewRequest("GET", urlStr, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	req.Header["Connection"] = []string{"keep-alive"}
+	req.Header["User-Agent"] = []string{"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36"}
+	req.Header["Accept"] = []string{"*/*"}
+	req.Header["Origin"] = []string{"https://www.bilibili.com"}
+	req.Header["Sec-Fetch-Site"] = []string{"cross-site"}
+	req.Header["Sec-Fetch-Mode"] = []string{"cors"}
+	req.Header["Sec-Fetch-Dest"] = []string{"empty"}
+	req.Header["Referer"] = []string{"https://www.bilibili.com"}
+	req.Header["Accept-Encoding"] = []string{"identity"}
+	req.Header["Accept-Language"] = []string{"zh-CN,zh;q=0.9,en;q=0.8"}
+	req.Header["Range"] = []string{rangeStr}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		//log.Printf("ERROR: %v", err)
+		return nil, 0, fmt.Errorf("error download: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if rangeStr == "bytes=0-10485760" && resp.StatusCode == http.StatusRequestedRangeNotSatisfiable {
+		//log.Printf("wrong status code: %d", resp.StatusCode)
+		contentRangeStr := resp.Header.Get("Content-Range")
+		if len(contentRangeStr) <= 0 {
+			return nil, 0, err
+		}
+
+		rangeStrings := rangeCompile.FindStringSubmatch(contentRangeStr)
+		if len(rangeStrings) != 2 {
+			return nil, 0, fmt.Errorf("error rangeStrings:%d != 2", len(rangeStrings))
+		}
+
+		rexpLengthMax, err := strconv.Atoi(rangeStrings[1])
+		if err != nil {
+			return nil, 0, err
+		}
+
+		return httpClientDownloadBytesByLength(urlStr, fmt.Sprintf("bytes=0-%d", rexpLengthMax-1))
+	}
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
+		//log.Printf("wrong status code: %d", resp.StatusCode)
+		text, _ := io.ReadAll(resp.Body)
+		return nil, 0, fmt.Errorf("error status code: %d\n%s", resp.StatusCode, text)
+	}
+	if rc := resp.Cookies(); len(rc) > 0 {
+		Conf.SetCookie(resp.Request.URL, rc)
+	}
+
+	bytes, err = io.ReadAll(resp.Body)
+
+	contentRangeStr := resp.Header.Get("Content-Range")
+	if len(contentRangeStr) <= 0 {
+		return bytes, 0, err
+	}
+
+	rangeStrings := rangeCompile.FindStringSubmatch(contentRangeStr)
+	if len(rangeStrings) != 2 {
+		return nil, 0, fmt.Errorf("error rangeStrings:%d != 2", len(rangeStrings))
+	}
+
+	lengthMax, err = strconv.Atoi(rangeStrings[1])
+	return bytes, lengthMax, err
+}
+
+var (
+	LoadingIndex   = 0
+	LoadingStrList = []string{"-", "\\", "|", "/"}
+	LoadingLength  = len(LoadingStrList)
+)
+
+func Loading() {
+	if LoadingIndex == LoadingLength {
+		LoadingIndex = 0
+	}
+	fmt.Printf("======= %s =======\r", LoadingStrList[LoadingIndex])
+	LoadingIndex++
 }

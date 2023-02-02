@@ -1,7 +1,7 @@
 package client
 
 import (
-	"bili/tools"
+	"biliDownload/tools"
 	"encoding/json"
 	"fmt"
 )
