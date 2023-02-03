@@ -14,6 +14,8 @@ var (
 )
 
 type ConfDb struct {
+	ChunkSize        int                               `json:"chunk_size"`
+	WebPort          int                               `json:"web_port"`
 	Cookies          map[string]map[string]http.Cookie `json:"cookies"`
 	UpMid            float64                           `json:"up_mid"`
 	ExcludeFavorites map[string]bool                   `json:"exclude_favorites"`
@@ -22,7 +24,9 @@ type ConfDb struct {
 
 func init() {
 	initDbFile()
-	newConfDb = &ConfDb{}
+	newConfDb = new(ConfDb)
+	newConfDb.WebPort = 80
+	newConfDb.ChunkSize = 1024 * 1024 * 10
 	newConfDb.Flush()
 	if newConfDb.Cookies == nil {
 		newConfDb.Cookies = make(map[string]map[string]http.Cookie)

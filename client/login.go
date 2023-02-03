@@ -139,9 +139,10 @@ func Login() error {
 	oauthKeyUrl := lui.Data["url"]
 
 	// 开启二维码验证服务
-	server.NewServer(oauthKeyUrl)
+	address := server.NewServer(oauthKeyUrl, Conf.WebPort)
+	tools.Log.Infof("请访问:%s, 扫描二维码登录", address)
 	// 弹出二维码
-	server.AlertAddress()
+	server.AlertAddress(Conf.WebPort)
 
 	// 循环请求是否验证
 forEnd:
@@ -165,5 +166,5 @@ forEnd:
 		}
 	}
 
-	return fmt.Errorf("请访问:%s, 扫描二维码登录!!!", server.Address)
+	return fmt.Errorf("请访问:%s, 扫描二维码登录", address)
 }

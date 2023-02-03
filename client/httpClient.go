@@ -127,14 +127,13 @@ func httpClientDownloadByLength(fileOut *os.File, urlStr string, rangeStr string
 
 func httpClientDownload(fileOut *os.File, urlStr string) (err error) {
 	tools.Log.Debug("download", urlStr)
-	length := 1024 * 1024 * 10
 
 	lengthMax := 1
 	min := 0
 	max := 0
 	backBuff := new(bytes.Buffer)
 	for min = 0; lengthMax > 0; min = max + 1 {
-		max = min + length
+		max = min + Conf.ChunkSize
 		if lengthMax != 1 && max > lengthMax {
 			max = lengthMax
 		}
@@ -157,7 +156,6 @@ func httpClientDownload(fileOut *os.File, urlStr string) (err error) {
 
 func NewReaderFromNetwork(urlStr string) (r *tools.Reader, err error) {
 	tools.Log.Debug("download", urlStr)
-	length := 1024 * 1024 * 5
 
 	lengthMax := 1
 	min := 0
@@ -166,7 +164,7 @@ func NewReaderFromNetwork(urlStr string) (r *tools.Reader, err error) {
 		if lengthMax < 1 {
 			return nil, io.EOF
 		}
-		max = min + length
+		max = min + Conf.ChunkSize
 		if lengthMax != 1 && max > lengthMax {
 			max = lengthMax
 		}
