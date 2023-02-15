@@ -278,7 +278,13 @@ func MediaMergeFromReader(videoReader, audioReader *Reader, savePath string) (er
 }
 
 func updateMovieFragmentHeaderBox(box *media.Box, sequenceNumber uint32) {
+	if box == nil {
+		return
+	}
 	_mbox := box.GetBox("mfhd")
+	if _mbox == nil {
+		return
+	}
 	_movieFragmentHeaderBox := new(media.MovieFragmentHeaderBox)
 	_movieFragmentHeaderBox.Load(_mbox.Dump())
 	_movieFragmentHeaderBox.SetSequenceNumber(sequenceNumber)
