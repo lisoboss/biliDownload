@@ -178,20 +178,11 @@ func MediaMergeFromReader(videoReader, audioReader *Reader, savePath string) (er
 		}
 		if box.Type() == "moof" {
 			// save moof
-			updateMovieFragmentHeaderBox(box, sequenceNumber)
-			sequenceNumber++
-			if _, err = fileOut.Write(box.Dump()); err != nil {
-				return
-			}
-
-			// save mdat
-			box, err = media.LoadBoxFrom(videoReader)
+			err = saveMM(box, sequenceNumber, fileOut, videoReader)
 			if err != nil {
-				return err
-			}
-			if _, err = fileOut.Write(box.Dump()); err != nil {
 				return
 			}
+			sequenceNumber++
 			break
 		}
 		// save box
@@ -206,20 +197,11 @@ func MediaMergeFromReader(videoReader, audioReader *Reader, savePath string) (er
 		}
 		if box.Type() == "moof" {
 			// save moof
-			updateMovieFragmentHeaderBox(box, sequenceNumber)
-			sequenceNumber++
-			if _, err = fileOut.Write(box.Dump()); err != nil {
-				return
-			}
-
-			// save mdat
-			box, err = media.LoadBoxFrom(audioReader)
+			err = saveMM(box, sequenceNumber, fileOut, audioReader)
 			if err != nil {
-				return err
-			}
-			if _, err = fileOut.Write(box.Dump()); err != nil {
 				return
 			}
+			sequenceNumber++
 			break
 		}
 	}
@@ -233,20 +215,11 @@ func MediaMergeFromReader(videoReader, audioReader *Reader, savePath string) (er
 				}
 			} else {
 				// save moof
-				updateMovieFragmentHeaderBox(vBox, sequenceNumber)
-				sequenceNumber++
-				if _, err = fileOut.Write(vBox.Dump()); err != nil {
-					return
-				}
-
-				// save mdat
-				vBox, err = media.LoadBoxFrom(videoReader)
+				err = saveMM(vBox, sequenceNumber, fileOut, videoReader)
 				if err != nil {
-					return err
-				}
-				if _, err = fileOut.Write(vBox.Dump()); err != nil {
 					return
 				}
+				sequenceNumber++
 			}
 		}
 		if !audioReader.Over() {
@@ -256,24 +229,14 @@ func MediaMergeFromReader(videoReader, audioReader *Reader, savePath string) (er
 				}
 			} else {
 				// save moof
-				updateMovieFragmentHeaderBox(vBox, sequenceNumber)
-				sequenceNumber++
-				if _, err = fileOut.Write(vBox.Dump()); err != nil {
-					return
-				}
-
-				// save mdat
-				vBox, err = media.LoadBoxFrom(audioReader)
+				err = saveMM(vBox, sequenceNumber, fileOut, audioReader)
 				if err != nil {
-					return err
-				}
-				if _, err = fileOut.Write(vBox.Dump()); err != nil {
 					return
 				}
+				sequenceNumber++
 			}
 		}
 	}
-
 	return
 }
 
@@ -289,4 +252,21 @@ func updateMovieFragmentHeaderBox(box *media.Box, sequenceNumber uint32) {
 	_movieFragmentHeaderBox.Load(_mbox.Dump())
 	_movieFragmentHeaderBox.SetSequenceNumber(sequenceNumber)
 	_mbox.Load(_movieFragmentHeaderBox.Dump())
+}
+
+func saveMM(box *media.Box, sequenceNumber uint32, fileOut *os.File, audioReader *Reader) (err error) {
+	if box != nil && box.Is("moof") {
+		// save moof
+		updateMovieFragmentHeaderBox(box, sequenceNumber)
+		if _, err = fileOut.Write(box.Dump()); err != nil {
+			return
+		}
+		// save mdat
+		box, err = media.LoadBoxFrom(audioReader)
+		if err != nil {
+			return
+		}
+		_, err = fileOut.Write(box.Dump())
+	}
+	return
 }
